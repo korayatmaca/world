@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox fx:controller="com.task.world.WorldGuiController" xmlns:fx="http://javafx.com/fxml">
+    <children>
+        <Button fx:id="startButton" text="Start" onAction="#startSimulation"/>
+        <Button fx:id="stopButton" text="Stop" onAction="#stopSimulation"/>
+        <Label fx:id="cameraViewpointLabel"/>
+    </children>
+</VBox>
