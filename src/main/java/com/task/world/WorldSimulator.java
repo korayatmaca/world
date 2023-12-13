@@ -10,6 +10,7 @@ public class WorldSimulator {
     private KafkaProducer<String, String> producer;
     private Random random;
     private volatile boolean running;
+    private String cameraViewpoint;
 
     public WorldSimulator() {
         Properties props = new Properties();
@@ -31,6 +32,9 @@ public class WorldSimulator {
                 String towerPosition = "50,50";
                 producer.send(new ProducerRecord<>("TowerPosition", towerPosition));
 
+                // Update the camera viewpoint
+                cameraViewpoint = targetPosition;
+
                 try {
                     Thread.sleep(1000);
                 } catch (InterruptedException e) {
@@ -42,6 +46,10 @@ public class WorldSimulator {
 
     public void stopSimulation() {
         running = false;
+    }
+
+    public String getCameraViewpoint() {
+        return cameraViewpoint;
     }
 
     public static void main(String[] args) {

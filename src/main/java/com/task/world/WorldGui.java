@@ -15,7 +15,7 @@ import java.util.Properties;
 
 public class WorldGui extends Application {
     private KafkaConsumer<String, String> consumer;
-    private FXMLLoader loader; // Declare the loader variable
+    private FXMLLoader loader;
 
     public WorldGui() {
         Properties consumerProps = new Properties();
@@ -30,32 +30,45 @@ public class WorldGui extends Application {
 
     @Override
     public void start(Stage primaryStage) throws Exception {
-        loader = new FXMLLoader(getClass().getResource("/com/task/world/world_gui.fxml")); // Initialize the loader variable
+        loader = new FXMLLoader(getClass().getResource("/com/task/world/world_gui.fxml"));
         VBox vbox = loader.load();
 
         Scene scene = new Scene(vbox, 200, 100);
 
         primaryStage.setScene(scene);
         primaryStage.show();
+
+        // Draw the initial positions of the radar and camera
+        WorldGuiController controller = loader.getController();
+        controller.drawRadar();
+        controller.drawCamera();
+
+        // Start listening for updates from Kafka
         new Thread(this::startListening).start();
+
     }
 
     private void startListening() {
         while (true) {
-            ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
+            try {
+                ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
 
-            for (ConsumerRecord<String, String> record : records) {
-                String cameraViewpoint = record.value();
+                for (ConsumerRecord<String, String> record : records) {
+                    String cameraViewpoint = record.value();
 
-                // Update the display on the JavaFX Application Thread
-                javafx.application.Platform.runLater(() -> {
-                    WorldGuiController controller = loader.getController();
-                    controller.updateCameraViewpoint(cameraViewpoint);
-                });
+                    // Update the display on the JavaFX Application Thread
+                    javafx.application.Platform.runLater(() -> {
+                        WorldGuiController controller = loader.getController();
+                        controller.updateCameraViewpoint(cameraViewpoint);
+                    });
+                }
+            } catch (Exception e) {
+                System.err.println("An error occurred while listening for updates from Kafka:");
+                e.printStackTrace();
+                break;
             }
         }
     }
-
     public static void main(String[] args) {
         launch(args);
     }
