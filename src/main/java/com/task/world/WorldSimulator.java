@@ -26,10 +26,10 @@ public class WorldSimulator {
         running = true;
         new Thread(() -> {
             while (running) {
-                String targetPosition = random.nextInt(100) + "," + random.nextInt(100);
+                String targetPosition = random.nextInt(10) + "," + random.nextInt(10);
                 producer.send(new ProducerRecord<>("TargetPointPosition", targetPosition));
 
-                String towerPosition = "50,50";
+                String towerPosition = "5,5";
                 producer.send(new ProducerRecord<>("TowerPosition", towerPosition));
 
                 // Update the camera viewpoint

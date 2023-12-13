@@ -24,6 +24,8 @@ public class RadarControl {
         consumer = new KafkaConsumer<>(consumerProps);
         consumer.subscribe(Arrays.asList("TargetPointPosition", "TowerPosition"));
 
+        System.out.println("Subscribed to topics: " + consumer.subscription());
+
         Properties producerProps = new Properties();
         producerProps.put("bootstrap.servers", "localhost:9092");
         producerProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
@@ -34,18 +36,23 @@ public class RadarControl {
 
     public void startControl() {
         while (true) {
-            ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
+            try {
+                ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
 
-            for (ConsumerRecord<String, String> record : records) {
-                String[] position = record.value().split(",");
-                int x = Integer.parseInt(position[0]);
-                int y = Integer.parseInt(position[1]);
+                for (ConsumerRecord<String, String> record : records) {
+                    String[] position = record.value().split(",");
+                    int x = Integer.parseInt(position[0]);
+                    int y = Integer.parseInt(position[1]);
 
-                // Calculate the angle and distance of the target from the radar
-                // This is a placeholder calculation, replace with actual calculation
-                String angleAndDistance = "angle:" + (x + y) + ",distance:" + Math.hypot(x, y);
+                    // Calculate the angle and distance of the target from the radar
+                    // This is a placeholder calculation, replace with actual calculation
+                    String angleAndDistance = "angle:" + (x + y) + ",distance:" + Math.hypot(x, y);
 
-                producer.send(new ProducerRecord<>("TargetBearingPosition", angleAndDistance));
+                    producer.send(new ProducerRecord<>("TargetBearingPosition", angleAndDistance));
+                }
+            } catch (Exception e) {
+                System.err.println("An error occurred while polling for records:");
+                e.printStackTrace();
             }
         }
     }

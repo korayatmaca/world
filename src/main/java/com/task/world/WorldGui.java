@@ -3,7 +3,7 @@ package com.task.world;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -31,21 +31,27 @@ public class WorldGui extends Application {
     @Override
     public void start(Stage primaryStage) throws Exception {
         loader = new FXMLLoader(getClass().getResource("/com/task/world/world_gui.fxml"));
-        VBox vbox = loader.load();
+        BorderPane borderPane = loader.load();
 
-        Scene scene = new Scene(vbox, 200, 100);
+        Scene scene = new Scene(borderPane, 200, 100);
 
         primaryStage.setScene(scene);
+
+        primaryStage.setMinWidth(800); // Adjust the window size as needed
+        primaryStage.setMinHeight(600); // Adjust the window size as needed
+        primaryStage.setMaxWidth(800); // Adjust the window size as needed
+        primaryStage.setMaxHeight(600); // Adjust the window size as needed
+        primaryStage.setTitle("World GUI");
+
         primaryStage.show();
 
-        // Draw the initial positions of the radar and camera
+        // Get the controller and draw the initial positions of the radar and camera
         WorldGuiController controller = loader.getController();
         controller.drawRadar();
         controller.drawCamera();
 
-        // Start listening for updates from Kafka
+        // Start listening for updates from Kafka on a new thread
         new Thread(this::startListening).start();
-
     }
 
     private void startListening() {
@@ -69,6 +75,7 @@ public class WorldGui extends Application {
             }
         }
     }
+
     public static void main(String[] args) {
         launch(args);
     }

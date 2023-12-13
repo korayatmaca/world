@@ -34,18 +34,23 @@ public class CameraControl {
 
     public void startControl() {
         while (true) {
-            ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
+            try {
+                ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
 
-            for (ConsumerRecord<String, String> record : records) {
-                String[] bearing = record.value().split(",");
-                int angle = Integer.parseInt(bearing[0].split(":")[1]);
-                int distance = Integer.parseInt(bearing[1].split(":")[1]);
+                for (ConsumerRecord<String, String> record : records) {
+                    String[] bearing = record.value().split(",");
+                    double angle = Double.parseDouble(bearing[0].split(":")[1]);
+                    double distance = Double.parseDouble(bearing[1].split(":")[1]);
 
-                // Calculate the angle of the target from the camera
-                // This is a placeholder calculation, replace with actual calculation
-                String cameraAngle = "angle:" + (angle + distance);
+                    // Calculate the angle of the target from the camera
+                    // This is a placeholder calculation, replace with actual calculation
+                    String cameraAngle = "angle:" + (angle + distance);
 
-                producer.send(new ProducerRecord<>("CameraLosStatus", cameraAngle));
+                    producer.send(new ProducerRecord<>("CameraLosStatus", cameraAngle));
+                }
+            } catch (Exception e) {
+                System.err.println("An error occurred while polling for records:");
+                e.printStackTrace();
             }
         }
     }

@@ -4,6 +4,7 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.chart.LineChart;
 import javafx.scene.chart.XYChart;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -17,11 +18,16 @@ import java.util.Collections;
 import java.util.Properties;
 
 public class WorldGuiController {
+    @FXML
     public Button startButton;
+    @FXML
     public Button stopButton;
+    @FXML
     public Label cameraViewpointLabel;
+    @FXML
     public Canvas worldCanvas;
-    public XYChart<Number, Number> worldChart; // Declare worldChart
+    @FXML
+    public LineChart<Number, Number> worldChart;
     private WorldSimulator worldSimulator;
     private KafkaConsumer<String, String> consumer;
 
@@ -36,6 +42,8 @@ public class WorldGuiController {
 
         consumer = new KafkaConsumer<>(consumerProps);
         consumer.subscribe(Collections.singleton("CameraLosStatus"));
+
+        System.out.println("Subscribed to topics: " + consumer.subscription());
     }
 
     @FXML
@@ -46,15 +54,19 @@ public class WorldGuiController {
 
     private void startListening() {
         while (true) {
-            ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
+            try {
+                ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
+                for (ConsumerRecord<String, String> record : records) {
+                    String cameraViewpoint = record.value();
 
-            for (ConsumerRecord<String, String> record : records) {
-                String cameraViewpoint = record.value();
-
-                // Update the display on the JavaFX Application Thread
-                javafx.application.Platform.runLater(() -> {
-                    updateCameraViewpoint(cameraViewpoint);
-                });
+                    // Update the display on the JavaFX Application Thread
+                    javafx.application.Platform.runLater(() -> {
+                        updateCameraViewpoint(cameraViewpoint);
+                    });
+                }
+            } catch (Exception e) {
+                System.err.println("An error occurred while polling for records:");
+                e.printStackTrace();
             }
         }
     }
@@ -69,34 +81,32 @@ public class WorldGuiController {
         drawTarget(cameraViewpoint);
         drawRadar();
         drawCamera();
+        updateChart(cameraViewpoint);
     }
 
     private void drawTarget(String cameraViewpoint) {
-        GraphicsContext gc = worldCanvas.getGraphicsContext2D();
-
-        // Clear the canvas
-        gc.clearRect(0, 0, worldCanvas.getWidth(), worldCanvas.getHeight());
-
-        // Parse the target position from the camera viewpoint
         String[] position = cameraViewpoint.split(",");
         double x = Double.parseDouble(position[0]);
         double y = Double.parseDouble(position[1]);
 
-        // Draw the target
-        gc.setFill(Color.RED);
-        gc.fillOval(x, y, 10, 10);
+        XYChart.Series<Number, Number> series = new XYChart.Series<>();
+        series.getData().add(new XYChart.Data<>(x, y));
+
+        worldChart.getData().add(series);
     }
 
     public void drawRadar() {
-        GraphicsContext gc = worldCanvas.getGraphicsContext2D();
-        gc.setFill(Color.BLUE);
-        gc.fillOval(10, 0, 10, 10);
+        XYChart.Series<Number, Number> series = new XYChart.Series<>();
+        series.getData().add(new XYChart.Data<>(1, 0)); // Adjust the position of the radar as needed
+
+        worldChart.getData().add(series);
     }
 
     public void drawCamera() {
-        GraphicsContext gc = worldCanvas.getGraphicsContext2D();
-        gc.setFill(Color.GREEN);
-        gc.fillOval(1, 0, 10, 10);
+        XYChart.Series<Number, Number> series = new XYChart.Series<>();
+        series.getData().add(new XYChart.Data<>(0, 0)); // Adjust the position of the camera as needed
+
+        worldChart.getData().add(series);
     }
 
     public void updateChart(String cameraViewpoint) {
