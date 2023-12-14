@@ -1,39 +1,51 @@
 package com.task.world;
 
-import javafx.event.ActionEvent;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
-import javafx.scene.canvas.Canvas;
-import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.XYChart;
 import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.paint.Color;
+import javafx.concurrent.Task;
+
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 
 import java.time.Duration;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.Properties;
-
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 public class WorldGuiController {
+
     @FXML
-    public Button startButton;
+    private LineChart<Number, Number> chart;
+
     @FXML
-    public Button stopButton;
+    private Button playButton;
+
     @FXML
-    public Label cameraViewpointLabel;
-    @FXML
-    public Canvas worldCanvas;
-    @FXML
-    public LineChart<Number, Number> worldChart;
+    private Button stopButton;
+
     private WorldSimulator worldSimulator;
+    private RadarControl radarControl;
+    private CameraControl cameraControl;
+    private volatile boolean isRunning = true;
+
     private KafkaConsumer<String, String> consumer;
 
-    public WorldGuiController() {
-        worldSimulator = new WorldSimulator();
+    private XYChart.Series<Number, Number> targetSeries;
+    private XYChart.Series<Number, Number> radarSeries;
+    private XYChart.Series<Number, Number> cameraSeries;
 
+    @FXML
+    public void initialize() {
+        // Initialize WorldSimulator, RadarControl and CameraControl
+        worldSimulator = new WorldSimulator();
+        radarControl = new RadarControl();
+        cameraControl = new CameraControl();
+
+        // Initialize Kafka consumer
         Properties consumerProps = new Properties();
         consumerProps.put("bootstrap.servers", "localhost:9092");
         consumerProps.put("group.id", "gui");
@@ -41,105 +53,91 @@ public class WorldGuiController {
         consumerProps.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
 
         consumer = new KafkaConsumer<>(consumerProps);
-        consumer.subscribe(Collections.singleton("CameraLosStatus"));
+        consumer.subscribe(Arrays.asList("TargetPointPosition", "RadarTowerPosition", "CameraTowerPosition"));
 
-        System.out.println("Subscribed to topics: " + consumer.subscription());
-    }
+        // Initialize series for each position
+        targetSeries = new XYChart.Series<>();
+        targetSeries.setName("TargetPointPosition");
+        radarSeries = new XYChart.Series<>();
+        radarSeries.setName("RadarTowerPosition");
+        cameraSeries = new XYChart.Series<>();
+        cameraSeries.setName("CameraTowerPosition");
 
-    @FXML
-    protected void startSimulation(ActionEvent event) {
-        worldSimulator.startSimulation();
+        // Add series to chart
+        chart.getData().addAll(targetSeries, radarSeries, cameraSeries);
+
+        // Start listening for updates from Kafka on a new thread
         new Thread(this::startListening).start();
     }
 
     private void startListening() {
-        while (true) {
-            try {
-                ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
-                for (ConsumerRecord<String, String> record : records) {
-                    String cameraViewpoint = record.value();
+        while (isRunning) {
+            ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(1000));
 
-                    // Update the display on the JavaFX Application Thread
-                    javafx.application.Platform.runLater(() -> {
-                        updateCameraViewpoint(cameraViewpoint);
-                    });
-                }
-            } catch (Exception e) {
-                System.err.println("An error occurred while polling for records:");
-                e.printStackTrace();
+            for (ConsumerRecord<String, String> record : records) {
+                Platform.runLater(() -> updateChart(record.topic(), record.value()));
             }
         }
     }
 
+    private void stopListening() {
+        isRunning = false;
+        consumer.close();
+    }
+
+    public void updateChart(String topic, String data) {
+        String[] coordinates = data.split(",");
+        int x = Integer.parseInt(coordinates[0]);
+        int y = Integer.parseInt(coordinates[1]);
+
+        XYChart.Data<Number, Number> point = new XYChart.Data<>(x, y);
+
+        switch (topic) {
+            case "TargetPointPosition":
+                targetSeries.getData().clear(); // Clear old data
+                targetSeries.getData().add(point); // Add new data
+                break;
+            case "RadarTowerPosition":
+                radarSeries.getData().add(point);
+                break;
+            case "CameraTowerPosition":
+                cameraSeries.getData().add(point);
+                break;
+        }
+    }
+
     @FXML
-    protected void stopSimulation(ActionEvent event) {
-        worldSimulator.stopSimulation();
+    public void play() {
+        Task<Void> task = new Task<Void>() {
+            @Override
+            protected Void call() throws Exception {
+                // Start WorldSimulator, RadarControl and CameraControl
+                worldSimulator.startSimulation();
+                radarControl.startControl();
+                cameraControl.startControl();
+                return null;
+            }
+        };
+
+        new Thread(task).start();
     }
 
-    public void updateCameraViewpoint(String cameraViewpoint) {
-        //cameraViewpointLabel.setText(cameraViewpoint);
-        drawTarget(cameraViewpoint);
-        drawRadar();
-        drawCamera();
-        updateChart(cameraViewpoint);
-    }
+    @FXML
+    public void stop() {
+        // Stop WorldSimulator, RadarControl and CameraControl
+        Future<?> simFuture = worldSimulator.stopSimulation();
+        Future<?> radarFuture = radarControl.stopControl();
+        Future<?> cameraFuture = cameraControl.stopControl();
 
-    private void drawTarget(String cameraViewpoint) {
-        String[] position = cameraViewpoint.split(",");
-        if (position.length < 2) {
-            System.err.println("Invalid camera viewpoint: " + cameraViewpoint);
-            return;
+        // Wait for all tasks to complete
+        try {
+            simFuture.get();
+            radarFuture.get();
+            cameraFuture.get();
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
         }
 
-        double x = Double.parseDouble(position[0]) / 100 * 15; // Scale down the position
-        double y = Double.parseDouble(position[1]) / 100 * 15; // Scale down the position
-        //double y = Double.parseDouble(position[1]);
-
-        XYChart.Series<Number, Number> series = new XYChart.Series<>();
-        series.getData().add(new XYChart.Data<>(x, y));
-
-        worldChart.getData().add(series);
-    }
-
-    public void drawRadar() {
-        XYChart.Series<Number, Number> series = new XYChart.Series<>();
-        series.getData().add(new XYChart.Data<>(1, 0)); // Adjust the position of the radar as needed
-
-        if (worldChart.getData().size() >= 2) {
-            worldChart.getData().set(1, series);
-        } else {
-            worldChart.getData().add(series);
-        }
-    }
-
-    public void drawCamera() {
-        XYChart.Series<Number, Number> series = new XYChart.Series<>();
-        series.getData().add(new XYChart.Data<>(9, 0)); // Adjust the position of the camera as needed
-
-        if (worldChart.getData().size() >= 3) {
-            worldChart.getData().set(2, series);
-        } else {
-            worldChart.getData().add(series);
-        }
-    }
-
-    public void updateChart(String cameraViewpoint) {
-        String[] position = cameraViewpoint.split(",");
-        if (position.length < 2) {
-            System.err.println("Invalid camera viewpoint: " + cameraViewpoint);
-            return;
-        }
-        double x = Double.parseDouble(position[0]);
-        double y = Double.parseDouble(position[1]);
-
-        XYChart.Series<Number, Number> series;
-        if (worldChart.getData().isEmpty()) {
-            series = new XYChart.Series<>();
-            worldChart.getData().add(series);
-        } else {
-            series = worldChart.getData().get(0);
-        }
-
-        series.getData().add(new XYChart.Data<>(x, y));
-    }
-}
+        // Stop listening for updates from Kafka
+        stopListening();
+    }}

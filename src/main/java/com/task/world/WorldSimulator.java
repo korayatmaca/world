@@ -5,6 +5,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 
 import java.util.Properties;
 import java.util.Random;
+import java.util.concurrent.Future;
 
 public class WorldSimulator {
     private KafkaProducer<String, String> producer;
@@ -53,9 +54,10 @@ public class WorldSimulator {
         System.out.println("Camera Tower " +  CameraTowerPosition);
         }
 
-    public void stopSimulation() {
+    public Future<?> stopSimulation() {
 
         running = false;
+        return null;
     }
 
     public static void main(String[] args) {
