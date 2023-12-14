@@ -35,8 +35,8 @@
             </children>
         </VBox>
     </center>
-    <bottom>
+    <!--bottom>
         <Label fx:id="cameraViewpointLabel"/>
-    </bottom>
+    </bottom-->
 
 </BorderPane>

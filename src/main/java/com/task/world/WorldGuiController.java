@@ -77,7 +77,7 @@ public class WorldGuiController {
     }
 
     public void updateCameraViewpoint(String cameraViewpoint) {
-        cameraViewpointLabel.setText(cameraViewpoint);
+        //cameraViewpointLabel.setText(cameraViewpoint);
         drawTarget(cameraViewpoint);
         drawRadar();
         drawCamera();
@@ -86,8 +86,14 @@ public class WorldGuiController {
 
     private void drawTarget(String cameraViewpoint) {
         String[] position = cameraViewpoint.split(",");
-        double x = Double.parseDouble(position[0]);
-        double y = Double.parseDouble(position[1]);
+        if (position.length < 2) {
+            System.err.println("Invalid camera viewpoint: " + cameraViewpoint);
+            return;
+        }
+
+        double x = Double.parseDouble(position[0]) / 100 * 15; // Scale down the position
+        double y = Double.parseDouble(position[1]) / 100 * 15; // Scale down the position
+        //double y = Double.parseDouble(position[1]);
 
         XYChart.Series<Number, Number> series = new XYChart.Series<>();
         series.getData().add(new XYChart.Data<>(x, y));
@@ -99,18 +105,30 @@ public class WorldGuiController {
         XYChart.Series<Number, Number> series = new XYChart.Series<>();
         series.getData().add(new XYChart.Data<>(1, 0)); // Adjust the position of the radar as needed
 
-        worldChart.getData().add(series);
+        if (worldChart.getData().size() >= 2) {
+            worldChart.getData().set(1, series);
+        } else {
+            worldChart.getData().add(series);
+        }
     }
 
     public void drawCamera() {
         XYChart.Series<Number, Number> series = new XYChart.Series<>();
-        series.getData().add(new XYChart.Data<>(0, 0)); // Adjust the position of the camera as needed
+        series.getData().add(new XYChart.Data<>(9, 0)); // Adjust the position of the camera as needed
 
-        worldChart.getData().add(series);
+        if (worldChart.getData().size() >= 3) {
+            worldChart.getData().set(2, series);
+        } else {
+            worldChart.getData().add(series);
+        }
     }
 
     public void updateChart(String cameraViewpoint) {
         String[] position = cameraViewpoint.split(",");
+        if (position.length < 2) {
+            System.err.println("Invalid camera viewpoint: " + cameraViewpoint);
+            return;
+        }
         double x = Double.parseDouble(position[0]);
         double y = Double.parseDouble(position[1]);
 

@@ -10,7 +10,6 @@ public class WorldSimulator {
     private KafkaProducer<String, String> producer;
     private Random random;
     private volatile boolean running;
-    private String cameraViewpoint;
 
     public WorldSimulator() {
         Properties props = new Properties();
@@ -26,16 +25,14 @@ public class WorldSimulator {
         running = true;
         new Thread(() -> {
             while (running) {
-                String targetPosition = random.nextInt(10) + "," + random.nextInt(10);
-                producer.send(new ProducerRecord<>("TargetPointPosition", targetPosition));
-
-                String towerPosition = "5,5";
-                producer.send(new ProducerRecord<>("TowerPosition", towerPosition));
-
-                // Update the camera viewpoint
-                cameraViewpoint = targetPosition;
-
                 try {
+                    // X0-20 and Y0-20 are the coordinates of the target point
+                    String targetPosition = random.nextInt(20) + "," + random.nextInt(20);
+                    System.out.println("Target position" +  targetPosition);
+                    producer.send(new ProducerRecord<>("TargetPointPosition", targetPosition));
+
+                    setTowerPosition();
+
                     Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
@@ -44,15 +41,25 @@ public class WorldSimulator {
         }).start();
     }
 
+    public void setTowerPosition() {
+
+        //String RadarTowerPosition = "1,1";
+        //producer.send(new ProducerRecord<>("RadarTowerPosition", RadarTowerPosition));
+
+        String CameraTowerPosition = "19,1";
+        producer.send(new ProducerRecord<>("CameraTowerPosition", CameraTowerPosition));
+
+        //System.out.println("Radar Tower " +  RadarTowerPosition);
+        System.out.println("Camera Tower " +  CameraTowerPosition);
+        }
+
     public void stopSimulation() {
+
         running = false;
     }
 
-    public String getCameraViewpoint() {
-        return cameraViewpoint;
-    }
-
     public static void main(String[] args) {
+        //new WorldSimulator().setTowerPosition();
         new WorldSimulator().startSimulation();
     }
 }
