@@ -48,7 +48,7 @@ public class CameraControl {
                     if (record.topic().equals("TargetBearing")) {
                         double targetBearing = Double.parseDouble(record.value());
                         System.out.println("Target bearing: " + targetBearing);
-                        //producer.send(new ProducerRecord<>("TargetBearingPosition", String.valueOf(targetBearing)));
+                        producer.send(new ProducerRecord<>("TargetBearingPosition", String.valueOf(targetBearing)));
                     } else if (record.topic().equals("CameraTowerPosition")) {
                         String[] cameraTowerPosition = record.value().split(",");
                         cameraX = Integer.parseInt(cameraTowerPosition[0]); // X coordinate of the camera tower
@@ -64,7 +64,7 @@ public class CameraControl {
                 }
                 double los = calculateLOS(cameraX, cameraY, targetX, targetY);
                 System.out.println("Line of sight: " + los);
-                //producer.send(new ProducerRecord<>("CameraLosStatus", String.valueOf(los)));
+                producer.send(new ProducerRecord<>("CameraLosStatus", String.valueOf(los)));
                 Thread.sleep(1000);
 
             } catch (Exception e) {

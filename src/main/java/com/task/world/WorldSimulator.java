@@ -43,13 +43,13 @@ public class WorldSimulator {
 
     public void setTowerPosition() {
 
-        //String RadarTowerPosition = "1,1";
-        //producer.send(new ProducerRecord<>("RadarTowerPosition", RadarTowerPosition));
+        String RadarTowerPosition = "1,1";
+        producer.send(new ProducerRecord<>("RadarTowerPosition", RadarTowerPosition));
 
         String CameraTowerPosition = "19,1";
         producer.send(new ProducerRecord<>("CameraTowerPosition", CameraTowerPosition));
 
-        //System.out.println("Radar Tower " +  RadarTowerPosition);
+        System.out.println("Radar Tower " +  RadarTowerPosition);
         System.out.println("Camera Tower " +  CameraTowerPosition);
         }
 
